@@ -58,7 +58,9 @@ class ToolCallingAgent(ResponsesAgent):
         self.workspace_client = WorkspaceClient()
         # Use DatabricksOpenAI() method which handles authentication automatically
         # This works in Databricks environments without needing explicit credentials
-        self.model_serving_client: OpenAI = self.DatabricksOpenAI()
+        self.model_serving_client: OpenAI = (
+            self.DatabricksOpenAI()
+        )
         self._tools_dict = {tool.name: tool for tool in tools}
 
     def DatabricksOpenAI(self) -> OpenAI:
