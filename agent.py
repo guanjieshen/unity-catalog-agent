@@ -272,7 +272,9 @@ def create_agent():
 
 
 # Initialize agent when module is imported
-# Note: mlflow.openai.autolog() should be called in the notebook/script that uses the agent
-# or when logging the model, not at module import time
+# IMPORTANT: Do NOT call mlflow.openai.autolog() here at module import time.
+# It causes initialization errors because MLflow's _multi_processor is not initialized yet.
+# Instead, call mlflow.openai.autolog() in the notebook/script that uses the agent
+# (see test_agent_databricks.ipynb) or in log_model.py when logging the model.
 AGENT = create_agent()
 
