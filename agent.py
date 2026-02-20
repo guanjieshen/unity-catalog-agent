@@ -93,18 +93,61 @@ class ToolCallingAgent(ResponsesAgent):
         host = self.workspace_client.config.host
         
         # Get token - try multiple methods for compatibility
+        # In Databricks, the token might be in different places depending on auth method
         token = None
+        
+        # Method 1: Try config.token (works when explicitly set)
         if hasattr(self.workspace_client.config, 'token') and self.workspace_client.config.token:
             token = self.workspace_client.config.token
+        
+        # Method 2: Try api_client.token (works in some Databricks environments)
         elif hasattr(self.workspace_client, 'api_client') and hasattr(self.workspace_client.api_client, 'token'):
             token = self.workspace_client.api_client.token
-        elif DATABRICKS_TOKEN:
+        
+        # Method 3: Try to get token from the HTTP session headers (common in Databricks)
+        if not token and hasattr(self.workspace_client, 'api_client'):
+            try:
+                api_client = self.workspace_client.api_client
+                # Try to get from session headers
+                if hasattr(api_client, '_session') and api_client._session:
+                    session = api_client._session
+                    if hasattr(session, 'headers') and 'Authorization' in session.headers:
+                        auth_header = session.headers.get('Authorization', '')
+                        if auth_header.startswith('Bearer '):
+                            token = auth_header.replace('Bearer ', '')
+            except Exception:
+                pass
+        
+        # Method 4: Try to get token from the auth provider
+        if not token and hasattr(self.workspace_client.config, '_auth_provider'):
+            try:
+                auth_provider = self.workspace_client.config._auth_provider
+                if hasattr(auth_provider, 'token'):
+                    token = auth_provider.token
+                elif hasattr(auth_provider, '_token'):
+                    token = auth_provider._token
+            except Exception:
+                pass
+        
+        # Method 5: Fall back to DATABRICKS_TOKEN from config
+        if not token and DATABRICKS_TOKEN:
             token = DATABRICKS_TOKEN
         
+        # Method 6: Try environment variables
+        if not token:
+            try:
+                import os
+                token = os.getenv('DATABRICKS_TOKEN') or os.getenv('DATABRICKS_ACCESS_TOKEN')
+            except Exception:
+                pass
+        
+        # If still no token, raise a helpful error
         if not token:
             raise ValueError(
                 "Databricks authentication token not found. "
-                "Please set DATABRICKS_TOKEN environment variable or ensure you're running in a Databricks environment."
+                "In Databricks environments, ensure you're running in a notebook or job context. "
+                "If running locally, set DATABRICKS_TOKEN environment variable. "
+                f"Host: {host if host else 'Not found'}"
             )
         
         if not host:
