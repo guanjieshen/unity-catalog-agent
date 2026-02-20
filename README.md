@@ -32,6 +32,14 @@ The agent is built using the MLflow `ResponsesAgent` framework and consists of:
 
 ## Installation
 
+### Option 1: Using Databricks Notebook (Recommended)
+
+1. Upload all project files to your Databricks workspace (or clone the repo)
+2. Open `test_agent_databricks.ipynb` in Databricks
+3. Run the cells to test the agent
+
+### Option 2: Manual Setup
+
 1. Clone or download this repository to your Databricks workspace
 
 2. Install dependencies:
