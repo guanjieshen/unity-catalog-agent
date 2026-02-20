@@ -91,19 +91,17 @@ class ToolCallingAgent(ResponsesAgent):
                 yield chunk.to_dict()
 
     def handle_tool_call(
-        self, tool_call: dict[str, Any], messages: list[dict[str, Any]]
+        self,
+        tool_call: dict[str, Any],
+        messages: list[dict[str, Any]],
     ) -> ResponsesAgentStreamEvent:
         """
-        Execute tool calls, add them to the running message history, and return a ResponsesStreamEvent w/ tool output.
-        
-        Args:
-            tool_call: Dictionary containing tool call information
-            messages: Current message history
-            
-        Returns:
-            ResponsesAgentStreamEvent with tool output
+        Execute tool calls, add them to the running message history, and return a ResponsesStreamEvent w/ tool output
         """
-        args = json.loads(tool_call["arguments"])
+        try:
+            args = json.loads(tool_call.get("arguments"))
+        except Exception as e:
+            args = {}
         result = str(self.execute_tool(tool_name=tool_call["name"], args=args))
 
         tool_call_output = self.create_function_call_output_item(tool_call["call_id"], result)
@@ -211,9 +209,9 @@ class ToolCallingAgent(ResponsesAgent):
                 }
             )
 
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}] + [
-            i.model_dump() for i in request.input
-        ]
+        messages = to_chat_completions_input([i.model_dump() for i in request.input])
+        if SYSTEM_PROMPT:
+            messages.insert(0, {"role": "system", "content": SYSTEM_PROMPT})
         yield from self.call_and_run_tools(messages=messages)
 
 
