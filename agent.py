@@ -112,7 +112,18 @@ class ToolCallingAgent(ResponsesAgent):
             if last_msg.get("role", None) == "assistant":
                 return
             elif last_msg.get("type", None) == "function_call":
-                yield self.handle_tool_call(last_msg, messages)
+                # Handle ALL pending tool calls, not just the last one.
+                # The LLM may emit multiple parallel function_call items at once,
+                # and ALL must have corresponding results before the next LLM call.
+                pending_tool_calls = []
+                for msg in reversed(messages):
+                    if msg.get("type") == "function_call":
+                        pending_tool_calls.append(msg)
+                    else:
+                        break
+                pending_tool_calls.reverse()
+                for tool_call in pending_tool_calls:
+                    yield self.handle_tool_call(tool_call, messages)
             else:
                 yield from output_to_responses_items_stream(
                     chunks=self.call_llm(messages), aggregator=messages
