@@ -91,7 +91,27 @@ class ToolCallingAgent(ResponsesAgent):
         # Initialize OpenAI client for Databricks model serving
         # Uses Databricks authentication from the workspace client
         host = self.workspace_client.config.host
-        token = self.workspace_client.config.token
+        
+        # Get token - try multiple methods for compatibility
+        token = None
+        if hasattr(self.workspace_client.config, 'token') and self.workspace_client.config.token:
+            token = self.workspace_client.config.token
+        elif hasattr(self.workspace_client, 'api_client') and hasattr(self.workspace_client.api_client, 'token'):
+            token = self.workspace_client.api_client.token
+        elif DATABRICKS_TOKEN:
+            token = DATABRICKS_TOKEN
+        
+        if not token:
+            raise ValueError(
+                "Databricks authentication token not found. "
+                "Please set DATABRICKS_TOKEN environment variable or ensure you're running in a Databricks environment."
+            )
+        
+        if not host:
+            raise ValueError(
+                "Databricks host not found. "
+                "Please set DATABRICKS_HOST environment variable or ensure you're running in a Databricks environment."
+            )
         
         # For Databricks model serving, use the serving-endpoints base URL
         # The model name will be passed to the chat.completions.create call
