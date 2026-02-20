@@ -11,8 +11,11 @@ This module contains all configuration constants including:
 # TODO: Replace with your model serving endpoint
 LLM_ENDPOINT_NAME = "databricks-claude-opus-4-6"
 
-# TODO: Replace with your vector search index name
-VECTOR_SEARCH_INDEX_NAME = ""
+# Vector Search configuration
+# TODO: Replace with your vector search endpoint name
+VECTOR_SEARCH_ENDPOINT_NAME = "data_advisor"
+# TODO: Replace with your vector search index name (format: catalog.schema.table)
+VECTOR_SEARCH_INDEX_NAME = "gshen_data_advisor.data_models.table_metadata"
 
 # Databricks authentication (optional - only needed if running outside Databricks)
 # If running in a Databricks notebook or job, these will be auto-detected
@@ -60,6 +63,13 @@ Core Objectives
 - If the objective is ambiguous, ask focused follow-up questions
 - Do not return overly broad dataset lists
 
+6. Iterative refinement with vector search
+- Use vector search to find initial relevant datasets
+- Analyze the search results to identify gaps or additional needs
+- Perform follow-up vector searches with refined queries based on initial results
+- Combine information from multiple searches to provide comprehensive recommendations
+- If initial search results are too broad or too narrow, refine the query and search again
+
 Output Structure
 
 User Objective (Restated Briefly)
@@ -95,7 +105,18 @@ Behavioral Guidelines
 - Prefer curated single source of truth tables
 - Avoid listing too many options
 - Do not invent datasets
-- Help users build confidence in the data they select"""
+- Help users build confidence in the data they select
+
+Iterative Search Strategy
+
+- Start with a broad vector search based on the user's question
+- Analyze the initial results to understand what datasets are available
+- If the initial search doesn't fully answer the question, perform additional searches:
+  * Use more specific queries based on what you learned from initial results
+  * Search for related concepts or complementary datasets
+  * Look for datasets that might need to be joined together
+- Synthesize information from multiple searches to provide a comprehensive answer
+- Only stop searching when you have enough information to fully address the user's question"""
 
 # Unity Catalog function names to expose as agent tools
 # The python_exec tool allows the agent to run Python code for data exploration

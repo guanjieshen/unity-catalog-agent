@@ -14,7 +14,7 @@ from databricks_openai import UCFunctionToolkit, VectorSearchRetrieverTool
 from pydantic import BaseModel
 from unitycatalog.ai.core.base import get_uc_function_client
 
-from config import UC_TOOL_NAMES, VECTOR_SEARCH_INDEX_NAME
+from config import UC_TOOL_NAMES, VECTOR_SEARCH_INDEX_NAME, VECTOR_SEARCH_ENDPOINT_NAME
 
 
 class ToolInfo(BaseModel):
@@ -84,8 +84,11 @@ def setup_tools():
     VECTOR_SEARCH_TOOLS.clear()
     
     if VECTOR_SEARCH_INDEX_NAME:
+        # VectorSearchRetrieverTool supports endpoint_name and index_name
+        # The index_name can be in format: catalog.schema.table or just the index name
         vs_tool = VectorSearchRetrieverTool(
             index_name=VECTOR_SEARCH_INDEX_NAME,
+            endpoint_name=VECTOR_SEARCH_ENDPOINT_NAME if VECTOR_SEARCH_ENDPOINT_NAME else None,
             # Add filters here if needed, e.g., filters="catalog='main'"
         )
         VECTOR_SEARCH_TOOLS.append(vs_tool)

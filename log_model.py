@@ -9,7 +9,7 @@ import mlflow
 from mlflow.models.resources import DatabricksFunction, DatabricksVectorSearchIndex
 from pkg_resources import get_distribution
 
-from config import UC_TOOL_NAMES, VECTOR_SEARCH_INDEX_NAME
+from config import UC_TOOL_NAMES, VECTOR_SEARCH_INDEX_NAME, VECTOR_SEARCH_ENDPOINT_NAME
 from tools import VECTOR_SEARCH_TOOLS
 
 

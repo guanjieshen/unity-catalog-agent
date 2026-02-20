@@ -59,13 +59,16 @@ Set your model serving endpoint name:
 LLM_ENDPOINT_NAME = "databricks-claude-opus-4-6"  # Replace with your endpoint
 ```
 
-### 2. Vector Search Index
+### 2. Vector Search Configuration
 
-Set your vector search index name:
+Set your vector search endpoint and index name:
 
 ```python
-VECTOR_SEARCH_INDEX_NAME = "your_vector_search_index"  # Replace with your index name
+VECTOR_SEARCH_ENDPOINT_NAME = "data_advisor"  # Your vector search endpoint name
+VECTOR_SEARCH_INDEX_NAME = "gshen_data_advisor.data_models.table_metadata"  # Your index name (format: catalog.schema.table)
 ```
+
+The index name can be in the format `catalog.schema.table` or just the index name, depending on your setup.
 
 ### 3. Databricks Authentication (Optional)
 

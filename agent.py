@@ -156,24 +156,39 @@ class ToolCallingAgent(ResponsesAgent):
     def call_and_run_tools(
         self,
         messages: list[dict[str, Any]],
-        max_iter: int = 10,
+        max_iter: int = 15,  # Increased to allow more iterative searches
     ) -> Generator[ResponsesAgentStreamEvent, None, None]:
         """
         Main tool calling loop that alternates between LLM calls and tool execution.
         
+        This loop enables iterative refinement:
+        1. LLM can call vector search to find initial datasets
+        2. LLM analyzes search results and can call vector search again with refined queries
+        3. Process continues until LLM has enough information to provide a comprehensive answer
+        
         Args:
-            messages: Current message history
-            max_iter: Maximum number of iterations before stopping
+            messages: Current message history (includes all tool results)
+            max_iter: Maximum number of iterations before stopping (increased to 15 for better iteration)
             
         Yields:
             ResponsesAgentStreamEvent objects
         """
+        iteration_count = 0
         for _ in range(max_iter):
+            iteration_count += 1
             last_msg = messages[-1]
+            
+            # If the last message is from assistant (final answer), we're done
             if last_msg.get("role", None) == "assistant":
                 return
+            
+            # If the last message is a function call, execute it
             elif last_msg.get("type", None) == "function_call":
                 yield self.handle_tool_call(last_msg, messages)
+                # After tool execution, continue the loop to let LLM process the results
+                # The LLM will see the tool output and can decide to call more tools or provide an answer
+            
+            # Otherwise, call the LLM (it may decide to call tools or provide an answer)
             else:
                 yield from output_to_responses_items_stream(
                     chunks=self.call_llm(messages), aggregator=messages

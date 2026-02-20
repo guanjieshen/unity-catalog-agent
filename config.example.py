@@ -8,8 +8,11 @@ Never commit config.py with real credentials to version control.
 # TODO: Replace with your model serving endpoint
 LLM_ENDPOINT_NAME = "databricks-claude-opus-4-6"
 
-# TODO: Replace with your vector search index name
-VECTOR_SEARCH_INDEX_NAME = ""
+# Vector Search configuration
+# TODO: Replace with your vector search endpoint name
+VECTOR_SEARCH_ENDPOINT_NAME = "data_advisor"
+# TODO: Replace with your vector search index name (format: catalog.schema.table)
+VECTOR_SEARCH_INDEX_NAME = "gshen_data_advisor.data_models.table_metadata"
 
 # Databricks authentication (optional - only needed if running outside Databricks)
 # If running in a Databricks notebook or job, these will be auto-detected
