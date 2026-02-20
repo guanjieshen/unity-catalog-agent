@@ -111,20 +111,33 @@ class ToolCallingAgent(ResponsesAgent):
             last_msg = messages[-1]
             if last_msg.get("role", None) == "assistant":
                 return
-            elif last_msg.get("type", None) == "function_call":
-                # Handle ALL pending tool calls, not just the last one.
-                # The LLM may emit multiple parallel function_call items at once,
-                # and ALL must have corresponding results before the next LLM call.
-                pending_tool_calls = []
-                for msg in reversed(messages):
-                    if msg.get("type") == "function_call":
-                        pending_tool_calls.append(msg)
-                    else:
-                        break
-                pending_tool_calls.reverse()
-                for tool_call in pending_tool_calls:
+            
+            # Check for any unprocessed function_calls in the messages list.
+            # A function_call is unprocessed if it doesn't have a corresponding
+            # function_call_output anywhere in the messages list.
+            unprocessed_tool_calls = []
+            processed_call_ids = set()
+            
+            # First pass: collect all processed call_ids
+            for msg in messages:
+                if msg.get("type") == "function_call_output":
+                    call_id = msg.get("call_id")
+                    if call_id:
+                        processed_call_ids.add(call_id)
+            
+            # Second pass: find unprocessed function_calls
+            for msg in messages:
+                if msg.get("type") == "function_call":
+                    call_id = msg.get("call_id")
+                    if call_id not in processed_call_ids:
+                        unprocessed_tool_calls.append(msg)
+            
+            if unprocessed_tool_calls:
+                # Process all unprocessed tool calls
+                for tool_call in unprocessed_tool_calls:
                     yield self.handle_tool_call(tool_call, messages)
             else:
+                # No unprocessed tool calls, call the LLM
                 yield from output_to_responses_items_stream(
                     chunks=self.call_llm(messages), aggregator=messages
                 )
