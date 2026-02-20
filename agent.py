@@ -71,15 +71,6 @@ class ToolCallingAgent(ResponsesAgent):
     @backoff.on_exception(backoff.expo, openai.RateLimitError)
     @mlflow.trace(span_type=SpanType.LLM)
     def call_llm(self, messages: list[dict[str, Any]]) -> Generator[dict[str, Any], None, None]:
-        """
-        Calls the LLM with the given messages and yields response chunks.
-        
-        Args:
-            messages: List of message dictionaries in chat format
-            
-        Yields:
-            Response chunks from the LLM
-        """
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="PydanticSerializationUnexpectedValue")
             for chunk in self.model_serving_client.chat.completions.create(
@@ -91,16 +82,14 @@ class ToolCallingAgent(ResponsesAgent):
                 yield chunk.to_dict()
 
     def handle_tool_call(
-        self,
-        tool_call: dict[str, Any],
-        messages: list[dict[str, Any]],
+        self, tool_call: dict[str, Any], messages: list[dict[str, Any]]
     ) -> ResponsesAgentStreamEvent:
         """
         Execute tool calls, add them to the running message history, and return a ResponsesStreamEvent w/ tool output
         """
         try:
             args = json.loads(tool_call.get("arguments"))
-        except Exception as e:
+        except Exception:
             args = {}
         result = str(self.execute_tool(tool_name=tool_call["name"], args=args))
 
@@ -111,39 +100,14 @@ class ToolCallingAgent(ResponsesAgent):
     def call_and_run_tools(
         self,
         messages: list[dict[str, Any]],
-        max_iter: int = 15,  # Increased to allow more iterative searches
+        max_iter: int = 15,
     ) -> Generator[ResponsesAgentStreamEvent, None, None]:
-        """
-        Main tool calling loop that alternates between LLM calls and tool execution.
-        
-        This loop enables iterative refinement:
-        1. LLM can call vector search to find initial datasets
-        2. LLM analyzes search results and can call vector search again with refined queries
-        3. Process continues until LLM has enough information to provide a comprehensive answer
-        
-        Args:
-            messages: Current message history (includes all tool results)
-            max_iter: Maximum number of iterations before stopping (increased to 15 for better iteration)
-            
-        Yields:
-            ResponsesAgentStreamEvent objects
-        """
-        iteration_count = 0
         for _ in range(max_iter):
-            iteration_count += 1
             last_msg = messages[-1]
-            
-            # If the last message is from assistant (final answer), we're done
             if last_msg.get("role", None) == "assistant":
                 return
-            
-            # If the last message is a function call, execute it
             elif last_msg.get("type", None) == "function_call":
                 yield self.handle_tool_call(last_msg, messages)
-                # After tool execution, continue the loop to let LLM process the results
-                # The LLM will see the tool output and can decide to call more tools or provide an answer
-            
-            # Otherwise, call the LLM (it may decide to call tools or provide an answer)
             else:
                 yield from output_to_responses_items_stream(
                     chunks=self.call_llm(messages), aggregator=messages
@@ -209,9 +173,9 @@ class ToolCallingAgent(ResponsesAgent):
                 }
             )
 
-        messages = to_chat_completions_input([i.model_dump() for i in request.input])
-        if SYSTEM_PROMPT:
-            messages.insert(0, {"role": "system", "content": SYSTEM_PROMPT})
+        messages = [{"role": "system", "content": SYSTEM_PROMPT}] + [
+            i.model_dump() for i in request.input
+        ]
         yield from self.call_and_run_tools(messages=messages)
 
 
