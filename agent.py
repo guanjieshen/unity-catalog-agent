@@ -65,6 +65,7 @@ class ToolCallingAgent(ResponsesAgent):
         """
         Get OpenAI client configured for Databricks model serving.
         This method handles authentication automatically in Databricks environments.
+        In Databricks, WorkspaceClient() auto-detects credentials, so we extract the token from it.
         
         Returns:
             OpenAI client instance configured for Databricks
@@ -81,14 +82,52 @@ class ToolCallingAgent(ResponsesAgent):
         # For Databricks model serving, use the serving-endpoints base URL
         base_url = f"{host}/serving-endpoints"
         
-        # In Databricks, WorkspaceClient handles auth automatically
-        # For local testing, use DATABRICKS_TOKEN if available
-        token = DATABRICKS_TOKEN if DATABRICKS_TOKEN else None
+        # Get token from workspace client - try multiple methods
+        token = None
         
-        # Create OpenAI client
-        # In Databricks, if no token is provided, the workspace client's auth will be used
+        # Method 1: Try config.token
+        if hasattr(self.workspace_client.config, 'token') and self.workspace_client.config.token:
+            token = self.workspace_client.config.token
+        
+        # Method 2: Try api_client.token
+        elif hasattr(self.workspace_client, 'api_client') and hasattr(self.workspace_client.api_client, 'token'):
+            token = self.workspace_client.api_client.token
+        
+        # Method 3: Try to get from HTTP session headers
+        if not token and hasattr(self.workspace_client, 'api_client'):
+            try:
+                api_client = self.workspace_client.api_client
+                if hasattr(api_client, '_session') and api_client._session:
+                    session = api_client._session
+                    if hasattr(session, 'headers') and 'Authorization' in session.headers:
+                        auth_header = session.headers.get('Authorization', '')
+                        if auth_header.startswith('Bearer '):
+                            token = auth_header.replace('Bearer ', '')
+            except Exception:
+                pass
+        
+        # Method 4: Fall back to DATABRICKS_TOKEN from config (for local testing)
+        if not token and DATABRICKS_TOKEN:
+            token = DATABRICKS_TOKEN
+        
+        # Method 5: Try environment variables
+        if not token:
+            try:
+                import os
+                token = os.getenv('DATABRICKS_TOKEN') or os.getenv('DATABRICKS_ACCESS_TOKEN')
+            except Exception:
+                pass
+        
+        if not token:
+            raise ValueError(
+                "Databricks authentication token not found. "
+                "In Databricks environments, ensure you're running in a notebook or job context. "
+                "If running locally, set DATABRICKS_TOKEN environment variable."
+            )
+        
+        # Create OpenAI client with the token
         return OpenAI(
-            api_key=token if token else "",  # Empty string allows Databricks to use default auth
+            api_key=token,
             base_url=base_url,
         )
 
