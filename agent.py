@@ -104,7 +104,25 @@ class ToolCallingAgent(ResponsesAgent):
     ) -> Generator[ResponsesAgentStreamEvent, None, None]:
         for _ in range(max_iter):
             last_msg = messages[-1]
-            if last_msg.get("role", None) == "assistant":
+            
+            # Check if last message is an assistant message with tool_use blocks
+            if last_msg.get("role") == "assistant":
+                # Check if the assistant message has tool_use blocks that need to be executed
+                content = last_msg.get("content", [])
+                if isinstance(content, list):
+                    tool_uses = [item for item in content if isinstance(item, dict) and item.get("type") == "tool_use"]
+                    if tool_uses:
+                        # Execute each tool call
+                        for tool_use in tool_uses:
+                            tool_call = {
+                                "name": tool_use.get("name"),
+                                "arguments": json.dumps(tool_use.get("input", {})),
+                                "call_id": tool_use.get("id")
+                            }
+                            yield self.handle_tool_call(tool_call, messages)
+                        # Continue loop to let LLM process tool results
+                        continue
+                # If no tool_use blocks, we're done
                 return
             elif last_msg.get("type", None) == "function_call":
                 yield self.handle_tool_call(last_msg, messages)
