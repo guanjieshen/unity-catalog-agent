@@ -23,6 +23,8 @@ VECTOR_SEARCH_INDEX_NAME = ""
 import os
 DATABRICKS_HOST = os.getenv("DATABRICKS_HOST", None)  # Your workspace URL
 DATABRICKS_TOKEN = os.getenv("DATABRICKS_TOKEN", None)  # Personal access token
+DATABRICKS_USERNAME = os.getenv("DATABRICKS_USERNAME", None)  # Optional: for username/password auth
+DATABRICKS_PASSWORD = os.getenv("DATABRICKS_PASSWORD", None)  # Optional: for username/password auth
 
 
 # System prompt for the Unity Catalog Data Advisor
