@@ -1,0 +1,26 @@
+# Core dependencies for Unity Catalog Data Advisor Agent
+
+# Databricks OpenAI integration for vector search and UC functions
+databricks-openai>=0.1.0
+
+# MLflow for model logging and deployment
+mlflow-skinny[databricks]>=2.0.0
+
+# Retry logic for rate limits
+backoff>=2.0.0
+
+# Databricks agent deployment utilities
+databricks-agents>=0.1.0
+
+# Databricks connectivity
+databricks-connect>=14.0.0
+
+# Unity Catalog AI integration
+unitycatalog-ai[databricks]>=0.1.0
+
+# OpenAI SDK for LLM interactions
+openai>=1.0.0
+
+# Pydantic for data validation
+pydantic>=2.0.0
+
