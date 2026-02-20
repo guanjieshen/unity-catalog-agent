@@ -79,7 +79,9 @@ class ToolCallingAgent(ResponsesAgent):
                 tools=self.get_tool_specs(),
                 stream=True,
             ):
-                yield chunk.to_dict()
+                chunk_dict = chunk.to_dict()
+                if len(chunk_dict.get("choices", [])) > 0:
+                    yield chunk_dict
 
     def handle_tool_call(
         self, tool_call: dict[str, Any], messages: list[dict[str, Any]]
@@ -104,25 +106,7 @@ class ToolCallingAgent(ResponsesAgent):
     ) -> Generator[ResponsesAgentStreamEvent, None, None]:
         for _ in range(max_iter):
             last_msg = messages[-1]
-            
-            # Check if last message is an assistant message with tool_use blocks
-            if last_msg.get("role") == "assistant":
-                # Check if the assistant message has tool_use blocks that need to be executed
-                content = last_msg.get("content", [])
-                if isinstance(content, list):
-                    tool_uses = [item for item in content if isinstance(item, dict) and item.get("type") == "tool_use"]
-                    if tool_uses:
-                        # Execute each tool call
-                        for tool_use in tool_uses:
-                            tool_call = {
-                                "name": tool_use.get("name"),
-                                "arguments": json.dumps(tool_use.get("input", {})),
-                                "call_id": tool_use.get("id")
-                            }
-                            yield self.handle_tool_call(tool_call, messages)
-                        # Continue loop to let LLM process tool results
-                        continue
-                # If no tool_use blocks, we're done
+            if last_msg.get("role", None) == "assistant":
                 return
             elif last_msg.get("type", None) == "function_call":
                 yield self.handle_tool_call(last_msg, messages)
@@ -191,9 +175,9 @@ class ToolCallingAgent(ResponsesAgent):
                 }
             )
 
-        messages = [{"role": "system", "content": SYSTEM_PROMPT}] + [
-            i.model_dump() for i in request.input
-        ]
+        messages = to_chat_completions_input([i.model_dump() for i in request.input])
+        if SYSTEM_PROMPT:
+            messages.insert(0, {"role": "system", "content": SYSTEM_PROMPT})
         yield from self.call_and_run_tools(messages=messages)
 
 
