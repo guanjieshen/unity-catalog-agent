@@ -73,9 +73,12 @@ class ToolCallingAgent(ResponsesAgent):
     def call_llm(self, messages: list[dict[str, Any]]) -> Generator[dict[str, Any], None, None]:
         with warnings.catch_warnings():
             warnings.filterwarnings("ignore", message="PydanticSerializationUnexpectedValue")
+            # Convert messages to chat completions format
+            # This handles the conversion from Responses format to OpenAI format
+            chat_messages = to_chat_completions_input(messages)
             for chunk in self.model_serving_client.chat.completions.create(
                 model=self.llm_endpoint,
-                messages=to_chat_completions_input(messages),
+                messages=chat_messages,
                 tools=self.get_tool_specs(),
                 stream=True,
             ):
