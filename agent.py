@@ -26,10 +26,6 @@ from mlflow.types.responses import (
 from openai import OpenAI
 
 from config import (
-    DATABRICKS_HOST,
-    DATABRICKS_TOKEN,
-    DATABRICKS_USERNAME,
-    DATABRICKS_PASSWORD,
     LLM_ENDPOINT_NAME,
     SYSTEM_PROMPT,
 )
@@ -56,82 +52,12 @@ class ToolCallingAgent(ResponsesAgent):
         # WorkspaceClient() auto-detects credentials in Databricks environments
         # For local testing, set DATABRICKS_HOST and DATABRICKS_TOKEN environment variables
         self.workspace_client = WorkspaceClient()
-        # Use DatabricksOpenAI() method which handles authentication automatically
-        # This works in Databricks environments without needing explicit credentials
+        # Use workspace client's built-in method to get OpenAI client with authentication
+        # This automatically handles authentication in Databricks environments
         self.model_serving_client: OpenAI = (
-            self.DatabricksOpenAI()
+            self.workspace_client.serving_endpoints.get_open_ai_client()
         )
         self._tools_dict = {tool.name: tool for tool in tools}
-
-    def DatabricksOpenAI(self) -> OpenAI:
-        """
-        Get OpenAI client configured for Databricks model serving.
-        This method handles authentication automatically in Databricks environments.
-        In Databricks, WorkspaceClient() auto-detects credentials, so we extract the token from it.
-        
-        Returns:
-            OpenAI client instance configured for Databricks
-        """
-        # Get host from workspace client
-        host = self.workspace_client.config.host
-        
-        if not host:
-            raise ValueError(
-                "Databricks host not found. "
-                "Please set DATABRICKS_HOST environment variable or ensure you're running in a Databricks environment."
-            )
-        
-        # For Databricks model serving, use the serving-endpoints base URL
-        base_url = f"{host}/serving-endpoints"
-        
-        # Get token from workspace client - try multiple methods
-        token = None
-        
-        # Method 1: Try config.token
-        if hasattr(self.workspace_client.config, 'token') and self.workspace_client.config.token:
-            token = self.workspace_client.config.token
-        
-        # Method 2: Try api_client.token
-        elif hasattr(self.workspace_client, 'api_client') and hasattr(self.workspace_client.api_client, 'token'):
-            token = self.workspace_client.api_client.token
-        
-        # Method 3: Try to get from HTTP session headers
-        if not token and hasattr(self.workspace_client, 'api_client'):
-            try:
-                api_client = self.workspace_client.api_client
-                if hasattr(api_client, '_session') and api_client._session:
-                    session = api_client._session
-                    if hasattr(session, 'headers') and 'Authorization' in session.headers:
-                        auth_header = session.headers.get('Authorization', '')
-                        if auth_header.startswith('Bearer '):
-                            token = auth_header.replace('Bearer ', '')
-            except Exception:
-                pass
-        
-        # Method 4: Fall back to DATABRICKS_TOKEN from config (for local testing)
-        if not token and DATABRICKS_TOKEN:
-            token = DATABRICKS_TOKEN
-        
-        # Method 5: Try environment variables
-        if not token:
-            try:
-                import os
-                token = os.getenv('DATABRICKS_TOKEN') or os.getenv('DATABRICKS_ACCESS_TOKEN')
-            except Exception:
-                pass
-        
-        if not token:
-            raise ValueError(
-                "Databricks authentication token not found. "
-                "In Databricks environments, ensure you're running in a notebook or job context. "
-                "If running locally, set DATABRICKS_TOKEN environment variable."
-            )
-        
-        # Create OpenAI client with the token
-        return OpenAI(
-            api_key=token,
-            base_url=base_url,
-        )
 
     def get_tool_specs(self) -> list[dict]:
         """Returns tool specifications in the format OpenAI expects."""
