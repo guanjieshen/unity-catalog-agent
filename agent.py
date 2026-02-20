@@ -256,8 +256,8 @@ def create_agent():
     return ToolCallingAgent(llm_endpoint=LLM_ENDPOINT_NAME, tools=tools)
 
 
-# Initialize agent when module is imported (for MLflow logging)
-mlflow.openai.autolog()
+# Initialize agent when module is imported
+# Note: mlflow.openai.autolog() should be called in the notebook/script that uses the agent
+# or when logging the model, not at module import time
 AGENT = create_agent()
-mlflow.models.set_model(AGENT)
 

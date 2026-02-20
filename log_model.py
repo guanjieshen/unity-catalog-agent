@@ -48,6 +48,10 @@ def log_agent_model(model_name: str = "unity-catalog-data-advisor", run_name: st
     Returns:
         ModelInfo object containing information about the logged model
     """
+    # Enable MLflow OpenAI autologging before logging the model
+    import mlflow
+    mlflow.openai.autolog()
+    
     # Ensure tools are set up to populate VECTOR_SEARCH_TOOLS
     from tools import setup_tools
     setup_tools()
